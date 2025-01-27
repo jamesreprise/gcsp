@@ -1,0 +1,45 @@
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: Release.
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Git Checkout.
+        uses: actions/checkout@v3
+
+      - name: Install Rust stable.
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+
+      - name: Build release.
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --locked
+
+      - name: Test release.
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --release --locked
+
+      - name: Rename artefact.
+        run: cp target/release/gcsp gcsp-x64-linux
+      - name: Create checksum.
+        run: shasum -a 256 gcsp-x64-linux > gcsp-x64-linux.sha256
+
+      - name: Release.
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: release-${{ github.sha }}
+          draft: true
+          fail_on_unmatched_files: true
+          files: |
+            gcsp-x64-linux
+            gcsp-x64-linux.sha256
