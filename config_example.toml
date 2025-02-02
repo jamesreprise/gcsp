@@ -1,3 +1,4 @@
 hmac_access_key = ""
 hmac_secret_key = ""
 csek_encryption_key = ""
+csek_encryption_key_sha256 = ""

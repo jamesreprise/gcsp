@@ -1,3 +1,4 @@
+mod config;
 mod handler;
 mod logging;
 mod metrics;
@@ -7,11 +8,12 @@ use axum::handler::Handler;
 use axum::middleware;
 use clap::Parser;
 
-use crate::handler::config::{ProxyConfig, ProxyState};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+
+use crate::config::ProxyConfig;
 use crate::handler::middleware as handler_middleware;
 use crate::handler::proxy::proxy;
-
-const ADDRESS: &str = "0.0.0.0:7000";
+use crate::handler::state::ProxyState;
 
 #[derive(Parser, Debug)]
 #[command(version, about)]
@@ -32,17 +34,29 @@ async fn main() -> Result<()> {
 
     logging::init(&args);
 
-    metrics::init();
+    let config: ProxyConfig =
+        toml::from_str(&std::fs::read_to_string(args.config_file)?)?;
 
-    let config: ProxyConfig = toml::from_str(&std::fs::read_to_string(args.config_file)?)?;
+    config.validate()?;
+
+    let loopback_address = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+    let metrics_socket_addr =
+        SocketAddr::new(loopback_address, config.metrics_port);
+    metrics::init(metrics_socket_addr);
+
     let state: ProxyState = ProxyState {
-        config,
+        config: config.clone(),
         http_client: http_client()?,
     };
 
-    let listener = tokio::net::TcpListener::bind(ADDRESS).await.unwrap();
+    let proxy_socket_addr =
+        SocketAddr::new(loopback_address, config.proxy_port);
 
-    tracing::info!("Starting server on {ADDRESS}...");
+    let listener = tokio::net::TcpListener::bind(proxy_socket_addr)
+        .await
+        .unwrap();
+
+    tracing::info!("Starting server on {proxy_socket_addr}...");
 
     let make_service = proxy
         .layer(middleware::from_fn(handler_middleware::metrics))

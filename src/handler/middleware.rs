@@ -10,9 +10,10 @@ pub(crate) async fn metrics(request: Request, next: Next) -> Response {
     let start = Instant::now();
 
     let (request_parts, request_body) = request.into_parts();
-    let request_body_bytes = axum::body::to_bytes(request_body, gcs::REQUEST_SIZE_BYTES_UPPERBOUND)
-        .await
-        .unwrap();
+    let request_body_bytes =
+        axum::body::to_bytes(request_body, gcs::REQUEST_SIZE_BYTES_UPPERBOUND)
+            .await
+            .unwrap();
     histogram!(HTTP_REQUEST_SIZE_BYTES).record(request_body_bytes.len() as f64);
 
     let request = Request::from_parts(request_parts, request_body_bytes.into());
@@ -25,7 +26,8 @@ pub(crate) async fn metrics(request: Request, next: Next) -> Response {
             .await
             .unwrap();
 
-    histogram!(HTTP_RESPONSE_SIZE_BYTES).record(response_body_bytes.len() as f64);
+    histogram!(HTTP_RESPONSE_SIZE_BYTES)
+        .record(response_body_bytes.len() as f64);
 
     // This could be GCS or the proxy itself.
     if response_parts.status.is_server_error() {
@@ -38,7 +40,8 @@ pub(crate) async fn metrics(request: Request, next: Next) -> Response {
         counter!(HTTP_RESPONSE_FAILURE).increment(1)
     }
 
-    histogram!(HTTP_REQUEST_DURATION_SECS).record(start.elapsed().as_secs_f64());
+    histogram!(HTTP_REQUEST_DURATION_SECS)
+        .record(start.elapsed().as_secs_f64());
 
     Response::from_parts(response_parts, response_body_bytes.into())
 }

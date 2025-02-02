@@ -8,7 +8,8 @@ use tracing_subscriber::{
 use crate::Args;
 
 pub fn init(args: &Args) {
-    let log_level_filter = LevelFilter::from_level(Level::from_str(&args.log_level).unwrap());
+    let log_level_filter =
+        LevelFilter::from_level(Level::from_str(&args.log_level).unwrap());
 
     let default_fmt_layer = Layer::default();
     let fmt = match args.json {

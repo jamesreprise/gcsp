@@ -1,6 +1,5 @@
 use anyhow::Result;
 use axum::http;
-use base64::prelude::*;
 use chrono::{DateTime, Utc};
 use hmac::{Hmac, Mac};
 use itertools::{join, sorted, Itertools};
@@ -24,6 +23,7 @@ pub(crate) struct GCPSignature {
 pub(crate) struct GCPSignatureRequest<'a> {
     pub(crate) credentials: GCPCredentials,
     pub(crate) csek_encryption_key: String,
+    pub(crate) csek_encryption_key_sha256: String,
     pub(crate) datetime: DateTime<Utc>,
     pub(crate) region: String,
     pub(crate) method: http::Method,
@@ -41,19 +41,21 @@ impl GCPSignatureRequest<'_> {
         let date_stamp = self.datetime.format("%Y%m%d").to_string();
 
         let mut canonical_headers: HashMap<String, String> = HashMap::new();
-        canonical_headers.insert(http::header::HOST.to_string(), gcs::HOST.to_string());
-        canonical_headers.insert(gcs::DATE_HEADER_KEY.to_string(), goog_date.clone());
+        canonical_headers
+            .insert(http::header::HOST.to_string(), gcs::HOST.to_string());
+        canonical_headers
+            .insert(gcs::DATE_HEADER_KEY.to_string(), goog_date.clone());
         canonical_headers.insert(
             gcs::CSEK_ENCRYPTION_ALGORITHM_HEADER_KEY.to_string(),
             gcs::CSEK_ENCRYPTION_ALGORITHM.to_string(),
         );
         canonical_headers.insert(
             gcs::CSEK_ENCRYPTION_KEY_HEADER_KEY.to_string(),
-            self.csek_encryption_key.to_string(),
+            self.csek_encryption_key.clone(),
         );
         canonical_headers.insert(
             gcs::CSEK_ENCRYPTION_KEY_SHA256_HEADER_KEY.to_string(),
-            csek_base64_of_sha256(&self.csek_encryption_key)?.to_string(),
+            self.csek_encryption_key_sha256.clone(),
         );
 
         // Derive signed headers from our canonical headers.
@@ -111,12 +113,14 @@ impl GCPSignatureRequest<'_> {
         )?;
 
         let date_region_key = hmac_sha256(&date_key, self.region.as_bytes())?;
-        let date_region_service_key = hmac_sha256(&date_region_key, gcs::SERVICE_NAME.as_bytes())?;
+        let date_region_service_key =
+            hmac_sha256(&date_region_key, gcs::SERVICE_NAME.as_bytes())?;
         let signing_key = hmac_sha256(
             &date_region_service_key,
             gcs::V4_SIGNATURE_REQUEST_TYPE.as_bytes(),
         )?;
-        let signature = hex::encode(hmac_sha256(&signing_key, string_to_sign.as_bytes())?);
+        let signature =
+            hex::encode(hmac_sha256(&signing_key, string_to_sign.as_bytes())?);
 
         // Create authorization header
         let credential = format!(
@@ -142,21 +146,9 @@ fn hmac_sha256(key: &[u8], msg: &[u8]) -> Result<Vec<u8>> {
     Ok(mac.finalize().into_bytes().to_vec())
 }
 
-pub(crate) fn csek_base64_of_sha256(key: &str) -> Result<String> {
-    Ok(BASE64_STANDARD.encode(sha2::Sha256::digest(BASE64_STANDARD.decode(key)?)))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test]
-    fn base64_key_to_base64_of_sha256_of_key() -> Result<()> {
-        assert_eq!(
-            csek_base64_of_sha256("xH7BtNooA2sIi407GFShu2ptk/GXNnNShVHqNSqS3o4=")?,
-            "qY3tWr71bsAVBGFgWA2wsMYIgw71Ko2HMA/Yj6DG0sU=".to_string()
-        );
-        Ok(())
-    }
 
     #[test]
     fn gcp_signature_no_body() -> Result<()> {
@@ -171,6 +163,7 @@ mod tests {
                 hmac_secret_key: "bGoa+V7g/yqDXvKRqq+JTFn4uQZbPiQJo4pf9RzJ".to_string(),
             },
             csek_encryption_key: "xH7BtNooA2sIi407GFShu2ptk/GXNnNShVHqNSqS3o4=".to_string(),
+            csek_encryption_key_sha256: "qY3tWr71bsAVBGFgWA2wsMYIgw71Ko2HMA/Yj6DG0sU=".to_string(),
             region: "europe-west6".to_string(),
             method: http::Method::GET,
             path: "/griffin-foundationdb-backups-dev-europe-west6".to_string(),
@@ -203,6 +196,7 @@ mod tests {
                 hmac_secret_key: "bGoa+V7g/yqDXvKRqq+JTFn4uQZbPiQJo4pf9RzJ".to_string(),
             },
             csek_encryption_key: "xH7BtNooA2sIi407GFShu2ptk/GXNnNShVHqNSqS3o4=".to_string(),
+            csek_encryption_key_sha256: "qY3tWr71bsAVBGFgWA2wsMYIgw71Ko2HMA/Yj6DG0sU=".to_string(),
             region: "europe-west6".to_string(),
             method: http::Method::GET,
             path: "/griffin-foundationdb-backups-dev-europe-west6".to_string(),

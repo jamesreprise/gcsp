@@ -21,9 +21,9 @@ pub(crate) struct AWSV4AuthHeader {
 impl AWSV4AuthHeader {
     pub(crate) fn from_header(auth_header_value: &str) -> anyhow::Result<Self> {
         let regex = Regex::new(AWSV4_AUTHORIZATION_HEADER_REGEX_PATTERN)?;
-        let captures = regex
-            .captures(auth_header_value)
-            .context("Couldn't regex AWSV4 signature header from client request")?;
+        let captures = regex.captures(auth_header_value).context(
+            "Couldn't regex AWSV4 signature header from client request",
+        )?;
 
         let hmac_access_key = captures[1].to_string();
         let date_stamp = captures[2].to_string();
@@ -56,7 +56,8 @@ mod tests {
 
         assert_eq!(
             auth_header.credential.hmac_access_key,
-            "GOOGTS7C7FUP3AIRVJTE2BCDKINBTES3HC2GY5CBFJDCQ2SYHV6A6XXVTJFSA".to_string()
+            "GOOGTS7C7FUP3AIRVJTE2BCDKINBTES3HC2GY5CBFJDCQ2SYHV6A6XXVTJFSA"
+                .to_string()
         );
         assert_eq!(auth_header.credential.date_stamp, "19700101".to_string());
         assert_eq!(auth_header.credential.region, "europe-west6".to_string());
