@@ -3,9 +3,14 @@ use base64::prelude::*;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 
+const fn _default_proxy_port() -> u16 { 60061 }
+const fn _default_metrics_port() -> u16 { 60062 }
+
 #[derive(Deserialize, Clone, Debug)]
 pub(crate) struct ProxyConfig {
+    #[serde(default = "_default_proxy_port")]
     pub(crate) proxy_port: u16,
+    #[serde(default = "_default_metrics_port")]
     pub(crate) metrics_port: u16,
     pub(crate) hmac_access_key: String,
     pub(crate) hmac_secret_key: String,
