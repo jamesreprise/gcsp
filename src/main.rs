@@ -40,6 +40,7 @@ async fn main() -> Result<()> {
     config.validate()?;
 
     let loopback_address = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+
     let metrics_socket_addr =
         SocketAddr::new(loopback_address, config.metrics_port);
     metrics::init(metrics_socket_addr);
