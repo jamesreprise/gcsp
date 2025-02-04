@@ -16,10 +16,6 @@ use chrono::Utc;
 use std::time::Instant;
 use tracing::instrument;
 
-// GCS's upper bound for multipart upload sizes.
-// If you're hitting this: what's going on, big guy?
-const FIVE_GIGABYTES_IN_BYTES: usize = 5 * 1024 * 1024 * 1024;
-
 fn uuid() -> String {
     uuid::Uuid::new_v4().to_string()
 }
@@ -59,7 +55,7 @@ pub async fn proxy(
         .unwrap_or("".to_string());
     let proxy_request_body = client_request.into_body();
     let proxy_request_body_bytes =
-        axum::body::to_bytes(proxy_request_body, FIVE_GIGABYTES_IN_BYTES)
+        axum::body::to_bytes(proxy_request_body, gcs::REQUEST_SIZE_BYTES_UPPERBOUND)
             .await?;
     let proxy_request_body_bytes_length = proxy_request_body_bytes.len();
 
