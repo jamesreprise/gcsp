@@ -122,7 +122,7 @@ impl GCPSignatureRequest<'_> {
         let signature =
             hex::encode(hmac_sha256(&signing_key, string_to_sign.as_bytes())?);
 
-        // Create authorization header
+        // Authorization header must be exactly as per https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-auth-using-authorization-header.html
         let credential = format!(
             "{hmac_access_key}/{credential_scope}",
             hmac_access_key = self.credentials.hmac_access_key
