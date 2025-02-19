@@ -148,8 +148,8 @@ pub async fn proxy(
         proxy_request_path_and_query,
     );
 
-    if proxy_request_body_bytes_length > 0 {
-        let validation = validate_response(
+    if proxy_request_body_bytes_length > 0 && server_response_status.is_success() {
+        let validation = validate_server_response(
             proxy_request_method,
             &proxy_request_query,
             &server_response_headers,
@@ -182,7 +182,7 @@ pub async fn proxy(
 }
 
 #[instrument(skip_all, level = tracing::Level::DEBUG)]
-fn validate_response(
+fn validate_server_response(
     request_method: http::Method,
     request_query: &str,
     response_headers: &HeaderMap,
